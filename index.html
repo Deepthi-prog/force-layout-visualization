@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Layout Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .node {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 5px;
+            font-size: 12px;
+            background: lightsteelblue;
+            border: 1px solid gray;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="tooltip" class="tooltip" style="opacity: 0;"></div>
+    <script>
+        // Load the JSON file
+        d3.json('author_network.json').then(data => {
+            const width = 960, height = 600;
+
+            // Create SVG canvas
+            const svg = d3.select("body").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            // Tooltip
+            const tooltip = d3.select("#tooltip");
+
+            // Define forces
+            const simulation = d3.forceSimulation(data.nodes)
+                .force("link", d3.forceLink(data.links).id(d => d.Author).strength(0.05))
+                .force("charge", d3.forceManyBody().strength(-30))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collide", d3.forceCollide().radius(12));
+
+            // Draw links
+            const link = svg.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(data.links)
+                .enter().append("line")
+                .attr("class", "link");
+
+            // Draw nodes
+            const node = svg.append("g")
+                .attr("class", "nodes")
+                .selectAll("circle")
+                .data(data.nodes)
+                .enter().append("circle")
+                .attr("class", "node")
+                .attr("r", d => Math.sqrt(d.degrees || 1) * 3)
+                .attr("fill", d => d.Country_Group === "Others" ? "#A9A9A9" : d3.schemeCategory10[top_countries.indexOf(d.Country_Group) % 10])
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`<strong>${d.Author}</strong><br>${d.Country_Group}`)
+                        .style("left", (event.pageX + 5) + "px")
+                        .style("top", (event.pageY - 5) + "px");
+
+                    node.style("opacity", o => (o.Country_Group === d.Country_Group ? 1 : 0.2));
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                    node.style("opacity", 1);
+                });
+
+            simulation.on("tick", () => {
+                link.attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node.attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+            });
+        });
+    </script>
+</body>
+</html>
